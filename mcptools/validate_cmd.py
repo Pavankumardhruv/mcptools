@@ -243,3 +243,4 @@ def run_validate(server: str):
         )
     )
     console.print()
+    return score

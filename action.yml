@@ -1,0 +1,64 @@
+name: "mcptools validate"
+description: "Validate your MCP server against best practices and enforce a minimum quality score."
+author: "Pavankumardhruv"
+
+branding:
+  icon: "check-circle"
+  color: "purple"
+
+inputs:
+  server:
+    description: "Path to your MCP server file (e.g. server.py)"
+    required: true
+  min-score:
+    description: "Minimum validation score (0-100). Fails the step if below."
+    required: false
+    default: "0"
+  python-version:
+    description: "Python version to use"
+    required: false
+    default: "3.12"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install mcptools
+      shell: bash
+      run: pip install git+https://github.com/Pavankumardhruv/mcptools.git
+
+    - name: Install server dependencies
+      shell: bash
+      run: |
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        elif [ -f pyproject.toml ]; then
+          pip install -e .
+        fi
+
+    - name: Validate MCP server
+      shell: bash
+      run: |
+        echo "::group::mcptools validate"
+        OUTPUT=$(mcptools validate "${{ inputs.server }}" 2>&1) || true
+        echo "$OUTPUT"
+        echo "::endgroup::"
+
+        SCORE=$(echo "$OUTPUT" | grep -oP '\d+(?=/100)' | head -1)
+        if [ -z "$SCORE" ]; then
+          echo "::error::Could not determine validation score"
+          exit 1
+        fi
+
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        echo "MCP validation score: $SCORE/100"
+
+        MIN=${{ inputs.min-score }}
+        if [ "$SCORE" -lt "$MIN" ]; then
+          echo "::error::Validation score $SCORE is below minimum $MIN"
+          exit 1
+        fi

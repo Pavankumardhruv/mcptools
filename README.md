@@ -166,7 +166,66 @@ mcptools validate server.py
 | Tool Count | Warns at 20+, fails at 30+ (context bloat) |
 | Prompt Descriptions | All prompts have descriptions |
 
-Returns a score out of 100 so you can gate CI on quality.
+Returns a score out of 100 so you can gate CI on quality:
+
+```bash
+mcptools validate server.py --min-score 80   # Exit code 1 if below 80
+```
+
+### `mcptools dev <server>`
+
+Run your MCP server in development mode with live reload. Watches for file changes, reconnects, and shows updated capabilities instantly.
+
+```bash
+mcptools dev server.py
+```
+
+```
+mcptools dev · watching /path/to/project · Ctrl+C to stop
+
+╭──────────────────────────────────╮
+│ my-server                        │
+│                                  │
+│ 2 tools  ·  1 resources  ·  1   │
+│ prompts                          │
+╰──────────────────────────────────╯
+
+ Tool           Description              Params
+ greet          Greet someone by name.   name
+ add            Add two numbers toget…   a, b
+
+Watching for changes...
+
+Changed: server.py
+Reloading...
+
+  Tools: +multiply
+```
+
+### `mcptools docs <server>`
+
+Auto-generate Markdown documentation from a live MCP server. Outputs to stdout (pipe to a file) or write directly with `--output`.
+
+```bash
+mcptools docs server.py                  # Print to stdout
+mcptools docs server.py -o TOOLS.md      # Write to file
+```
+
+Generates a clean doc with tool tables, parameter schemas, resource URIs, and prompt arguments — ready to paste into your README.
+
+### GitHub Action
+
+Gate your PRs on MCP server quality. Add to your workflow:
+
+```yaml
+- name: Validate MCP server
+  uses: Pavankumardhruv/mcptools@main
+  with:
+    server: server.py
+    min-score: 80
+```
+
+Installs mcptools, installs your server's dependencies, and fails the step if the validation score is below your threshold.
 
 ## How It Works
 
@@ -200,7 +259,9 @@ mcptools/
 ├── init_cmd.py       # Project scaffolding
 ├── inspect_cmd.py    # Server inspection
 ├── test_cmd.py       # Interactive tool testing
-└── validate_cmd.py   # Best-practice validation
+├── validate_cmd.py   # Best-practice validation
+├── dev_cmd.py        # Dev server with auto-reload
+└── docs_cmd.py       # Markdown documentation generator
 ```
 
 ## Works With

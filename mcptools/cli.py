@@ -80,11 +80,46 @@ def validate(
     server: str = typer.Argument(
         ..., help="Server to validate (Python file or command)",
     ),
+    min_score: int = typer.Option(
+        0, "--min-score", "-m", help="Exit with error if score is below this threshold",
+    ),
 ):
     """Validate an MCP server against best practices."""
     from .validate_cmd import run_validate
 
-    run_validate(server)
+    score = run_validate(server)
+    if min_score > 0 and score < min_score:
+        console.print(
+            f"[red]Score {score} is below minimum {min_score}[/]"
+        )
+        raise typer.Exit(1)
+
+
+@app.command()
+def dev(
+    server: str = typer.Argument(
+        ..., help="Server to run in dev mode (Python file or command)",
+    ),
+):
+    """Run an MCP server with auto-reload on file changes."""
+    from .dev_cmd import run_dev
+
+    run_dev(server)
+
+
+@app.command()
+def docs(
+    server: str = typer.Argument(
+        ..., help="Server to document (Python file or command)",
+    ),
+    output: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Write to file instead of stdout",
+    ),
+):
+    """Auto-generate Markdown documentation from an MCP server."""
+    from .docs_cmd import run_docs
+
+    run_docs(server, output=output)
 
 
 if __name__ == "__main__":
