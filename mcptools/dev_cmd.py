@@ -10,15 +10,17 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .client import with_client
+from .utils import fetch_capabilities
 
 console = Console()
 
 
 def _collect_mtimes(directory, extensions=(".py", ".js", ".ts")):
     mtimes = {}
+    skip = {".venv", "node_modules", "__pycache__", ".git"}
     for ext in extensions:
         for path in Path(directory).rglob(f"*{ext}"):
-            if ".venv" in path.parts or "node_modules" in path.parts:
+            if skip & set(path.parts):
                 continue
             try:
                 mtimes[str(path)] = path.stat().st_mtime
@@ -38,26 +40,6 @@ def _find_changed(old, new):
     return changed
 
 
-async def _inspect(client):
-    tools = await client.list_tools()
-    resources = []
-    prompts = []
-    try:
-        resources = await client.list_resources()
-    except Exception:
-        pass
-    try:
-        prompts = await client.list_prompts()
-    except Exception:
-        pass
-    return {
-        "server_info": client.server_info,
-        "tools": tools,
-        "resources": resources,
-        "prompts": prompts,
-    }
-
-
 def _display(result):
     info = result["server_info"]
     tools = result["tools"]
@@ -69,8 +51,8 @@ def _display(result):
     console.print(
         Panel(
             f"[bold cyan]{name}[/]\n\n"
-            f"[bold]{len(tools)}[/] tools  ·  "
-            f"[bold]{len(resources)}[/] resources  ·  "
+            f"[bold]{len(tools)}[/] tools  \u00b7  "
+            f"[bold]{len(resources)}[/] resources  \u00b7  "
             f"[bold]{len(prompts)}[/] prompts",
             border_style="blue",
         )
@@ -87,7 +69,7 @@ def _display(result):
             desc = tool.get("description", "")
             if len(desc) > 50:
                 desc = desc[:47] + "..."
-            table.add_row(tool["name"], desc, pnames)
+            table.add_row(tool.get("name", "?"), desc, pnames)
         console.print(table)
 
 
@@ -98,11 +80,19 @@ def _diff_report(old, new):
     removed = old_names - new_names
     parts = []
     if added:
-        parts.append(f"[green]+{', '.join(added)}[/]")
+        parts.append(f"[green]+{', '.join(sorted(added))}[/]")
     if removed:
-        parts.append(f"[red]-{', '.join(removed)}[/]")
+        parts.append(f"[red]-{', '.join(sorted(removed))}[/]")
+    if not added and not removed:
+        old_descs = {t["name"]: t.get("description") for t in old["tools"]}
+        new_descs = {t["name"]: t.get("description") for t in new["tools"]}
+        changed = [n for n in new_names if old_descs.get(n) != new_descs.get(n)]
+        if changed:
+            parts.append(f"[yellow]~{', '.join(sorted(changed))}[/]")
     if parts:
         console.print(f"  Tools: {' '.join(parts)}")
+    else:
+        console.print("  [dim]No changes to tools[/]")
 
 
 def run_dev(server: str):
@@ -114,15 +104,16 @@ def run_dev(server: str):
 
     console.clear()
     console.print(
-        f"[bold blue]mcptools dev[/] · watching [cyan]{watch_dir}[/] · Ctrl+C to stop\n"
+        f"[bold blue]mcptools dev[/] \u00b7 watching [cyan]{watch_dir}[/] \u00b7 Ctrl+C to stop\n"
     )
 
+    result = None
     try:
-        result = asyncio.run(with_client(server, _inspect))
+        result = asyncio.run(with_client(server, fetch_capabilities))
         _display(result)
+        console.print("  [green]\u2713 Server OK[/]")
     except Exception as e:
-        console.print(f"[red]Failed to connect:[/] {e}")
-        result = None
+        console.print(f"  [red]\u2717 Failed to connect:[/] {e}")
 
     console.print(f"\n[dim]Watching for changes...[/]")
     last_mtimes = _collect_mtimes(watch_dir)
@@ -136,17 +127,21 @@ def run_dev(server: str):
             if changed:
                 last_mtimes = current_mtimes
                 console.print(
-                    f"\n[yellow]Changed:[/] {', '.join(changed[:5])}"
+                    f"\n[yellow]\u21bb Changed:[/] {', '.join(changed[:5])}"
                 )
-                console.print("[dim]Reloading...[/]\n")
+
                 try:
-                    new_result = asyncio.run(with_client(server, _inspect))
+                    new_result = asyncio.run(
+                        with_client(server, fetch_capabilities)
+                    )
                     _display(new_result)
                     if result:
                         _diff_report(result, new_result)
                     result = new_result
+                    console.print("  [green]\u2713 Server OK[/]")
                 except Exception as e:
-                    console.print(f"[red]Error:[/] {e}")
+                    console.print(f"  [red]\u2717 Error:[/] {e}")
+
                 console.print(f"\n[dim]Watching for changes...[/]")
 
     except KeyboardInterrupt:

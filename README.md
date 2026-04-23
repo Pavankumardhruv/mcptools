@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>The Swiss Army knife for MCP server development.</strong><br>
-  Scaffold. Inspect. Test. Validate. Ship.
+  Scaffold. Inspect. Test. Validate. Debug. Benchmark. Ship.
 </p>
 
 <p align="center">
@@ -15,75 +15,62 @@
 
 ---
 
-Building MCP servers is easy. Building them **well** is harder. mcptools gives you a complete development toolkit — from scaffolding to validation — so you can ship MCP servers with confidence.
+Building MCP servers is easy. Building them **well** is harder. mcptools gives you a complete development toolkit — from scaffolding to production validation — so you can ship MCP servers with confidence.
 
-**Zero dependencies on the MCP SDK.** mcptools connects to any MCP server over stdio using the JSON-RPC protocol directly. Works with Python, Node.js, Go — anything that speaks MCP.
+**Zero dependencies on the MCP SDK.** mcptools connects to any MCP server over stdio using the JSON-RPC protocol directly. Works with Python, Node.js, Go, Rust — anything that speaks MCP.
 
 ## Demo
 
 ```bash
-$ mcptools init my-weather-server
+$ mcptools init my-server
+  Created my-server/ (basic template)
+    server.py, pyproject.toml, tests/, README.md
 
-  Created my-weather-server/
-
-    server.py              MCP server with example tools
-    pyproject.toml         Project config
-    tests/test_server.py   Tests using FastMCP Client
-    README.md              Documentation
-
-  Next steps:
-
-    cd my-weather-server
-    pip install -e .
-    mcptools inspect server.py
-    mcptools test server.py
-```
-
-```bash
-$ mcptools inspect server.py
-
-╭──────────── Server Capabilities ────────────╮
-│ my-weather-server v0.1.0                    │
-│                                             │
-│ 2 tools  ·  1 resources  ·  1 prompts      │
-╰─────────────────────────────────────────────╯
-
+$ mcptools inspect my-server/server.py
+╭──────── Server Capabilities ────────╮
+│ my-server v3.2.4                    │
+│ 2 tools  ·  1 resources  ·  1 prom │
+╰─────────────────────────────────────╯
 ┌──────────────── Tools ─────────────────┐
-│ Name     │ Description        │ Params │
-├──────────┼────────────────────┼────────┤
-│ greet    │ Greet someone by   │ name:  │
-│          │ name               │ string │
-├──────────┼────────────────────┼────────┤
-│ add      │ Add two numbers    │ a: int │
-│          │ together           │ b: int │
-└──────────┴────────────────────┴────────┘
-```
+│ Name            │ Description  │ Params│
+├─────────────────┼──────────────┼───────┤
+│ get_greeting    │ Generate a   │ name  │
+│                 │ greeting...  │       │
+│ calculate_sum   │ Calculate    │ a, b  │
+│                 │ the sum...   │       │
+└─────────────────┴──────────────┴───────┘
 
-```bash
-$ mcptools test server.py --tool greet --params '{"name": "World"}'
+$ mcptools test my-server/server.py --tool get_greeting --params '{"name": "World"}'
+╭──── Result: get_greeting ────╮
+│ Hello, World!                │
+╰──────────────────────────────╯
 
-╭──── Result: greet ────╮
-│ Hello, World!         │
-╰───────────────────────╯
-```
+$ mcptools validate my-server/server.py
+┌────────────── Validation ──────────────┐
+│ Tool Naming        │  PASS  │ ✓ ✓     │
+│ Tool Descriptions  │  PASS  │ ✓ ✓     │
+│ Parameter Schemas  │  WARN  │ ⚠ no... │
+│ Security Hints     │  PASS  │ ✓       │
+└────────────────────┴────────┴─────────┘
+╭── Score ──╮
+│  77/100   │
+╰───────────╯
 
-```bash
-$ mcptools validate server.py
+$ mcptools bench my-server/server.py --runs 10
+┌────────── Benchmark (10 runs) ──────────┐
+│ Tool            │  Avg │  P50 │  P95    │
+├─────────────────┼──────┼──────┼─────────┤
+│ get_greeting    │ 0.8ms│ 0.6ms│ 1.2ms  │
+│ calculate_sum   │ 0.6ms│ 0.5ms│ 0.7ms  │
+└─────────────────┴──────┴──────┴─────────┘
 
-┌──────────── Validation Results ────────────┐
-│ Check              │ Status │ Details       │
-├────────────────────┼────────┼───────────────┤
-│ Tool Naming        │  PASS  │ ✓ ✓           │
-│ Tool Descriptions  │  PASS  │ ✓ ✓           │
-│ Parameter Schemas  │  WARN  │ ⚠ no desc     │
-│ Uniqueness         │  PASS  │ ✓ ✓ ✓         │
-│ Tool Count         │  PASS  │ ✓ 2 tools     │
-│ Prompt Descriptions│  PASS  │ ✓             │
-└────────────────────┴────────┴───────────────┘
-
-╭──── Score ────╮
-│  85/100       │
-╰───────────────╯
+$ mcptools diff server_v1.py server_v2.py
+┌──────── Server Diff ────────┐
+│ add_item      │   ADDED     │
+│ get_items     │   CHANGED   │
+│ old_tool      │   REMOVED   │
+└───────────────┴─────────────┘
+Summary: +1 added · ~1 changed · -1 removed
 ```
 
 ## Install
@@ -92,7 +79,7 @@ $ mcptools validate server.py
 pip install git+https://github.com/Pavankumardhruv/mcptools.git
 ```
 
-Or clone and install locally:
+Or clone locally:
 
 ```bash
 git clone https://github.com/Pavankumardhruv/mcptools.git
@@ -102,120 +89,163 @@ pip install -e .
 
 ## Commands
 
-### `mcptools init <name>`
+### `mcptools init <name>` — Scaffold
 
-Scaffold a new MCP server project with [FastMCP](https://gofastmcp.com).
+Create a new MCP server project with [FastMCP](https://gofastmcp.com).
 
 ```bash
-mcptools init my-server
-cd my-server
-pip install -e .
+mcptools init my-server                    # Basic template
+mcptools init my-server --template api     # REST API wrapper
+mcptools init my-server --template database # SQLite CRUD server
 ```
 
-Creates a complete project with:
-- `server.py` — MCP server with example tools, resources, and prompts
-- `pyproject.toml` — Dependencies and project config
-- `tests/` — Test setup using FastMCP's in-memory client
-- Git repo initialized
+**Templates:**
 
-### `mcptools inspect <server>`
+| Template | What you get |
+|----------|-------------|
+| `basic` | Greeting + math tools, resource, prompt |
+| `api` | httpx-based REST API wrapper with list/get/search |
+| `database` | SQLite CRUD operations (list, create, update, delete) |
 
-Connect to any MCP server and display its capabilities in rich terminal tables.
+Each template includes `pyproject.toml`, tests, `.gitignore`, and a git repo.
+
+### `mcptools inspect <server>` — Explore
+
+Connect to any MCP server and display its capabilities.
 
 ```bash
 mcptools inspect server.py              # Python server
 mcptools inspect server.js              # Node.js server
 mcptools inspect "python server.py"     # Explicit command
-mcptools inspect server.py --json       # Raw JSON output
+mcptools inspect server.py --json       # Raw JSON output (pipe to jq)
 ```
 
-Shows:
-- Server name and version
-- All tools with descriptions and parameter schemas
-- All resources with URIs and MIME types
-- All prompts with arguments
+### `mcptools test <server>` — Test
 
-### `mcptools test <server>`
-
-Interactively test tools on a running MCP server.
+Interactively test tools or script them for CI.
 
 ```bash
-# Interactive mode — pick tools, enter params, see results
-mcptools test server.py
-
-# Non-interactive — great for CI/scripts
-mcptools test server.py --tool greet --params '{"name": "World"}'
+mcptools test server.py                                      # Interactive
+mcptools test server.py --tool get_greeting --params '{"name": "World"}'  # Scripted
 ```
 
-### `mcptools validate <server>`
+Interactive mode shows all tools, lets you pick one, prompts for parameters with type validation, and displays results.
 
-Lint your MCP server against best practices from the [MCP specification](https://modelcontextprotocol.io).
+### `mcptools validate <server>` — Lint
+
+Validate against MCP best practices. 8 checks across naming, descriptions, schemas, security, and more.
 
 ```bash
-mcptools validate server.py
+mcptools validate server.py                  # Full report
+mcptools validate server.py --min-score 80   # Fail if below 80 (for CI)
 ```
 
 **Checks:**
 
 | Check | What it validates |
 |---|---|
-| Tool Naming | snake_case, starts with a verb (get_, create_, list_, ...) |
-| Tool Descriptions | Present, 10–500 characters, clear and useful |
-| Parameter Schemas | Type annotations and descriptions on all params |
-| Uniqueness | No duplicate tool names or resource URIs |
-| Tool Count | Warns at 20+, fails at 30+ (context bloat) |
-| Prompt Descriptions | All prompts have descriptions |
+| Tool Naming | snake_case, starts with a verb |
+| Tool Descriptions | Present, 10–500 characters |
+| Parameter Schemas | Type annotations and descriptions |
+| Uniqueness | No duplicate tools, resources, or prompts |
+| Tool Count | Warns at 20+, fails at 30+ |
+| Resource Quality | URIs, descriptions, MIME types |
+| Prompt Quality | Descriptions and argument docs |
+| Security Hints | Flags dangerous operations, credential exposure, raw SQL |
 
-Returns a score out of 100 so you can gate CI on quality:
+### `mcptools dev <server>` — Develop
 
-```bash
-mcptools validate server.py --min-score 80   # Exit code 1 if below 80
-```
-
-### `mcptools dev <server>`
-
-Run your MCP server in development mode with live reload. Watches for file changes, reconnects, and shows updated capabilities instantly.
+Watch for file changes, auto-reconnect, and show updated capabilities with a diff.
 
 ```bash
 mcptools dev server.py
 ```
 
 ```
-mcptools dev · watching /path/to/project · Ctrl+C to stop
+mcptools dev · watching /project · Ctrl+C to stop
 
-╭──────────────────────────────────╮
-│ my-server                        │
-│                                  │
-│ 2 tools  ·  1 resources  ·  1   │
-│ prompts                          │
-╰──────────────────────────────────╯
+╭── my-server ──────────────────╮
+│ 2 tools · 1 resources · 1 pr │
+╰───────────────────────────────╯
 
- Tool           Description              Params
- greet          Greet someone by name.   name
- add            Add two numbers toget…   a, b
+✓ Server OK
 
 Watching for changes...
 
-Changed: server.py
-Reloading...
-
-  Tools: +multiply
+↻ Changed: server.py
+  Tools: +search_items
+  ✓ Server OK
 ```
 
-### `mcptools docs <server>`
+### `mcptools docs <server>` — Document
 
-Auto-generate Markdown documentation from a live MCP server. Outputs to stdout (pipe to a file) or write directly with `--output`.
+Auto-generate Markdown documentation from a live server.
 
 ```bash
 mcptools docs server.py                  # Print to stdout
 mcptools docs server.py -o TOOLS.md      # Write to file
 ```
 
-Generates a clean doc with tool tables, parameter schemas, resource URIs, and prompt arguments — ready to paste into your README.
+Generates tool tables, parameter schemas, resource URIs, and prompt arguments. Ready to paste into your README.
+
+### `mcptools proxy <server>` — Debug
+
+Transparent traffic proxy. Sit between any MCP client and server, log every JSON-RPC message with timestamps and formatting.
+
+```bash
+mcptools proxy server.py
+```
+
+```
+╭── mcptools proxy ──────────────────────╮
+│ python server.py                       │
+│ Forwarding stdin/stdout · Ctrl+C to stop│
+╰────────────────────────────────────────╯
+
+#1  0.01s  client → server  initialize id=1
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  ...
+}
+
+#2  0.03s  server → client  response id=1
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": { "serverInfo": ... }
+}
+```
+
+Use this to debug protocol issues, inspect what your client is actually sending, or understand an unfamiliar server's behavior.
+
+### `mcptools diff <server_a> <server_b>` — Compare
+
+Compare capabilities of two MCP servers side by side. Essential for versioning and migration.
+
+```bash
+mcptools diff server_v1.py server_v2.py
+mcptools diff old_server.py new_server.py
+```
+
+Shows added, removed, and changed tools, resources, and prompts with a summary.
+
+### `mcptools bench <server>` — Benchmark
+
+Measure tool response times with statistical analysis.
+
+```bash
+mcptools bench server.py                                      # All tools, 10 runs
+mcptools bench server.py --tool search --params '{"q":"test"}' # Specific tool
+mcptools bench server.py --runs 100                           # More runs for accuracy
+```
+
+Reports avg, min, max, P50, P95, and error count per tool. Auto-generates minimal valid parameters for tools you don't specify.
 
 ### GitHub Action
 
-Gate your PRs on MCP server quality. Add to your workflow:
+Gate PRs on MCP server quality:
 
 ```yaml
 - name: Validate MCP server
@@ -224,8 +254,6 @@ Gate your PRs on MCP server quality. Add to your workflow:
     server: server.py
     min-score: 80
 ```
-
-Installs mcptools, installs your server's dependencies, and fails the step if the validation score is below your threshold.
 
 ## How It Works
 
@@ -240,40 +268,36 @@ Installs mcptools, installs your server's dependencies, and fails the step if th
                                        stderr → logs
 ```
 
-mcptools includes a lightweight JSON-RPC client that speaks the MCP protocol directly over stdio. No MCP SDK required — it works with any server in any language.
-
-**Protocol flow:**
-1. Launch server process
-2. Send `initialize` with client capabilities
-3. Receive server capabilities
-4. Send `notifications/initialized`
-5. Query tools/resources/prompts or call tools
-6. Close connection
+mcptools includes a lightweight JSON-RPC client that speaks the MCP protocol directly over stdio. No MCP SDK required — works with any server in any language.
 
 ## Architecture
 
 ```
 mcptools/
-├── cli.py            # Typer CLI — all commands
+├── cli.py            # Typer CLI — 9 commands
 ├── client.py         # Lightweight MCP client (JSON-RPC over stdio)
-├── init_cmd.py       # Project scaffolding
+├── utils.py          # Shared inspection utilities
+├── init_cmd.py       # Project scaffolding (3 templates)
 ├── inspect_cmd.py    # Server inspection
 ├── test_cmd.py       # Interactive tool testing
-├── validate_cmd.py   # Best-practice validation
+├── validate_cmd.py   # Best-practice validation (8 checks)
 ├── dev_cmd.py        # Dev server with auto-reload
-└── docs_cmd.py       # Markdown documentation generator
+├── docs_cmd.py       # Markdown documentation generator
+├── proxy_cmd.py      # JSON-RPC traffic proxy
+├── diff_cmd.py       # Server capability diffing
+└── bench_cmd.py      # Tool benchmarking
 ```
 
 ## Works With
 
-mcptools works with any MCP server, regardless of language or framework:
+Any MCP server, any language, any framework:
 
 - **Python** — [FastMCP](https://gofastmcp.com), [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - **TypeScript** — [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - **Go** — [mcp-go](https://github.com/mark3labs/mcp-go)
 - **Rust** — [mcp-rust](https://github.com/Derek-X-Wang/mcp-rust-sdk)
 
-Used by developers building MCP servers for **Claude Code**, **Cursor**, **Windsurf**, **Cline**, and other AI tools.
+For developers building MCP servers for **Claude Code**, **Cursor**, **Windsurf**, **Cline**, and more.
 
 ## Requirements
 

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sys
 
 from rich.console import Console
 from rich.panel import Panel
@@ -31,7 +32,26 @@ async def _run_test(server: str, tool_name: str = None, params: str = None):
             return
 
         if tool_name:
-            parsed_params = json.loads(params) if params else {}
+            matching = [t for t in tools if t["name"] == tool_name]
+            if not matching:
+                names = ", ".join(t["name"] for t in tools)
+                console.print(
+                    f"[red]Tool '{tool_name}' not found.[/]\n"
+                    f"[dim]Available: {names}[/]"
+                )
+                sys.exit(1)
+
+            parsed_params = {}
+            if params:
+                try:
+                    parsed_params = json.loads(params)
+                except json.JSONDecodeError as e:
+                    console.print(
+                        f"[red]Invalid JSON in --params:[/] {e}\n"
+                        f'[dim]Example: --params \'{{"key": "value"}}\'[/]'
+                    )
+                    sys.exit(1)
+
             result = await client.call_tool(tool_name, parsed_params)
             _print_result(tool_name, result)
             return
@@ -92,22 +112,33 @@ def _prompt_params(tool):
         if not is_required:
             label += " [dim][optional][/dim]"
 
-        default = "" if not is_required else ...
-        value = Prompt.ask(label, default=default)
+        while True:
+            default = "" if not is_required else ...
+            value = Prompt.ask(label, default=default)
 
-        if value == "" and not is_required:
-            continue
+            if value == "" and not is_required:
+                break
 
-        if ptype == "integer":
-            arguments[name] = int(value)
-        elif ptype == "number":
-            arguments[name] = float(value)
-        elif ptype == "boolean":
-            arguments[name] = value.lower() in ("true", "1", "yes")
-        elif ptype in ("object", "array"):
-            arguments[name] = json.loads(value)
-        else:
-            arguments[name] = value
+            try:
+                if ptype == "integer":
+                    arguments[name] = int(value)
+                elif ptype == "number":
+                    arguments[name] = float(value)
+                elif ptype == "boolean":
+                    arguments[name] = value.lower() in (
+                        "true", "1", "yes", "y", "on",
+                    )
+                elif ptype in ("object", "array"):
+                    arguments[name] = json.loads(value)
+                else:
+                    arguments[name] = value
+                break
+            except (ValueError, json.JSONDecodeError) as e:
+                console.print(f"  [red]Invalid {ptype}:[/] {e}")
+                if ptype in ("object", "array"):
+                    console.print(
+                        f'  [dim]Example: {{"key": "value"}}[/]'
+                    )
 
     return arguments
 

@@ -9,32 +9,13 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from .client import with_client
+from .utils import fetch_capabilities
 
 console = Console()
 
 
-async def _inspect(client):
-    tools = await client.list_tools()
-    resources = []
-    prompts = []
-    try:
-        resources = await client.list_resources()
-    except Exception:
-        pass
-    try:
-        prompts = await client.list_prompts()
-    except Exception:
-        pass
-    return {
-        "server_info": client.server_info,
-        "tools": tools,
-        "resources": resources,
-        "prompts": prompts,
-    }
-
-
 def run_inspect(server: str, json_output: bool = False):
-    result = asyncio.run(with_client(server, _inspect))
+    result = asyncio.run(with_client(server, fetch_capabilities))
 
     if json_output:
         console.print(
@@ -54,8 +35,8 @@ def run_inspect(server: str, json_output: bool = False):
     console.print(
         Panel(
             f"[bold cyan]{server_name}[/] v{server_version}\n\n"
-            f"[bold]{len(tools)}[/] tools  ·  "
-            f"[bold]{len(resources)}[/] resources  ·  "
+            f"[bold]{len(tools)}[/] tools  \u00b7  "
+            f"[bold]{len(resources)}[/] resources  \u00b7  "
             f"[bold]{len(prompts)}[/] prompts",
             title="Server Capabilities",
             border_style="blue",

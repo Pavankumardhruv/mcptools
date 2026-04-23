@@ -35,11 +35,15 @@ def main(
 @app.command()
 def init(
     name: str = typer.Argument(..., help="Name for the new MCP server project"),
+    template: str = typer.Option(
+        "basic", "--template", "-t",
+        help="Project template: basic, api, or database",
+    ),
 ):
     """Scaffold a new MCP server project with FastMCP."""
     from .init_cmd import run_init
 
-    run_init(name)
+    run_init(name, template=template)
 
 
 @app.command()
@@ -120,6 +124,50 @@ def docs(
     from .docs_cmd import run_docs
 
     run_docs(server, output=output)
+
+
+@app.command()
+def proxy(
+    server: str = typer.Argument(
+        ..., help="Server to proxy (Python file or command)",
+    ),
+):
+    """Log all JSON-RPC traffic between an MCP client and server."""
+    from .proxy_cmd import run_proxy
+
+    run_proxy(server)
+
+
+@app.command()
+def diff(
+    server_a: str = typer.Argument(..., help="First server (baseline)"),
+    server_b: str = typer.Argument(..., help="Second server (new version)"),
+):
+    """Compare capabilities of two MCP servers side by side."""
+    from .diff_cmd import run_diff
+
+    run_diff(server_a, server_b)
+
+
+@app.command()
+def bench(
+    server: str = typer.Argument(
+        ..., help="Server to benchmark (Python file or command)",
+    ),
+    tool: Optional[str] = typer.Option(
+        None, "--tool", "-t", help="Benchmark a specific tool (default: all)",
+    ),
+    params: Optional[str] = typer.Option(
+        None, "--params", "-p", help="JSON parameters for the tool",
+    ),
+    runs: int = typer.Option(
+        10, "--runs", "-n", help="Number of benchmark runs per tool",
+    ),
+):
+    """Benchmark tool response times on an MCP server."""
+    from .bench_cmd import run_bench
+
+    run_bench(server, tool=tool, params=params, runs=runs)
 
 
 if __name__ == "__main__":

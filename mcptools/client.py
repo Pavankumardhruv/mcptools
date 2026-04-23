@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import shutil
 
 
 class MCPError(Exception):
@@ -20,16 +21,28 @@ class MCPClient:
         self.server_info = None
         self.capabilities = None
 
-    async def connect(self, command, args=None, env=None):
+    async def connect(self, command, args=None, env=None, timeout=30):
+        if not shutil.which(command):
+            raise FileNotFoundError(
+                f"Command '{command}' not found. "
+                f"Make sure it is installed and on your PATH."
+            )
+
         merged_env = {**os.environ, **(env or {})}
-        self.process = await asyncio.create_subprocess_exec(
-            command,
-            *(args or []),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=merged_env,
-        )
+        try:
+            self.process = await asyncio.create_subprocess_exec(
+                command,
+                *(args or []),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=merged_env,
+            )
+        except PermissionError:
+            raise PermissionError(
+                f"Permission denied running '{command}'. Check file permissions."
+            )
+
         result = await self._request(
             "initialize",
             {
@@ -37,20 +50,21 @@ class MCPClient:
                 "capabilities": {},
                 "clientInfo": {"name": "mcptools", "version": "0.1.0"},
             },
+            timeout=timeout,
         )
         self.server_info = result.get("serverInfo", {})
         self.capabilities = result.get("capabilities", {})
         await self._notify("notifications/initialized")
         return result
 
-    async def _request(self, method, params=None):
+    async def _request(self, method, params=None, timeout=30):
         self._id += 1
         request_id = self._id
         msg = {"jsonrpc": "2.0", "id": request_id, "method": method}
         if params is not None:
             msg["params"] = params
         await self._send(msg)
-        return await self._read_response(request_id)
+        return await self._read_response(request_id, method, timeout)
 
     async def _notify(self, method, params=None):
         msg = {"jsonrpc": "2.0", "method": method}
@@ -63,23 +77,28 @@ class MCPClient:
         self.process.stdin.write(line.encode())
         await self.process.stdin.drain()
 
-    async def _read_response(self, expected_id):
+    async def _read_response(self, expected_id, method="", timeout=30):
         while True:
             try:
                 line = await asyncio.wait_for(
-                    self.process.stdout.readline(), timeout=30
+                    self.process.stdout.readline(), timeout=timeout
                 )
             except asyncio.TimeoutError:
-                raise ConnectionError("Server did not respond within 30 seconds")
+                raise ConnectionError(
+                    f"Server did not respond to '{method}' within {timeout}s. "
+                    f"The server may be hanging or not running an MCP transport."
+                )
             if not line:
                 stderr_output = ""
                 try:
-                    stderr_output = (await self.process.stderr.read()).decode()
+                    stderr_output = (await self.process.stderr.read()).decode().strip()
                 except Exception:
                     pass
-                raise ConnectionError(
-                    f"Server process exited unexpectedly.\n{stderr_output}"
-                )
+                msg = "Server process exited unexpectedly."
+                if stderr_output:
+                    msg += f"\n\nServer stderr:\n{stderr_output}"
+                raise ConnectionError(msg)
+
             text = line.decode().strip()
             if not text:
                 continue
@@ -87,17 +106,21 @@ class MCPClient:
                 msg = json.loads(text)
             except json.JSONDecodeError:
                 continue
+            if not isinstance(msg, dict):
+                continue
             if "id" not in msg:
                 continue
-            if msg["id"] == expected_id:
-                if "error" in msg:
-                    err = msg["error"]
-                    raise MCPError(
-                        err.get("code", -1),
-                        err.get("message", "Unknown error"),
-                        err.get("data"),
-                    )
-                return msg.get("result", {})
+            if msg["id"] != expected_id:
+                continue
+
+            if "error" in msg:
+                err = msg["error"]
+                raise MCPError(
+                    err.get("code", -1),
+                    err.get("message", "Unknown error"),
+                    err.get("data"),
+                )
+            return msg.get("result", {})
 
     async def list_tools(self):
         result = await self._request("tools/list")
@@ -117,12 +140,13 @@ class MCPClient:
         )
 
     async def close(self):
-        if self.process:
+        if self.process and self.process.returncode is None:
             try:
                 self.process.stdin.close()
                 await asyncio.wait_for(self.process.wait(), timeout=5)
             except (asyncio.TimeoutError, ProcessLookupError):
                 self.process.kill()
+                await self.process.wait()
 
 
 def parse_server_spec(spec):
@@ -134,6 +158,8 @@ def parse_server_spec(spec):
       "python server.py"  -> ("python", ["server.py"])
     """
     spec = spec.strip()
+    if not spec:
+        raise ValueError("Server specification cannot be empty.")
     if spec.endswith(".py"):
         return "python", [spec]
     if spec.endswith(".js") or spec.endswith(".ts"):
