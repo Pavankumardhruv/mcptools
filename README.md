@@ -15,9 +15,9 @@
 
 ---
 
-Building MCP servers is easy. Building them **well** is harder. mcptools gives you a complete development toolkit — from scaffolding to production validation — so you can ship MCP servers with confidence.
+Development toolkit for MCP servers. Scaffold projects, inspect capabilities, test tools interactively, validate against best practices, benchmark performance, and diff between versions.
 
-**Zero dependencies on the MCP SDK.** mcptools connects to any MCP server over stdio using the JSON-RPC protocol directly. Works with Python, Node.js, Go, Rust — anything that speaks MCP.
+Connects to any MCP server over stdio using JSON-RPC directly - no MCP SDK dependency. Works with Python, Node.js, Go, Rust, or anything that speaks the protocol.
 
 ## Demo
 
@@ -89,7 +89,7 @@ pip install -e .
 
 ## Commands
 
-### `mcptools init <name>` — Scaffold
+### `mcptools init <name>` - Scaffold
 
 Create a new MCP server project with [FastMCP](https://gofastmcp.com).
 
@@ -109,7 +109,7 @@ mcptools init my-server --template database # SQLite CRUD server
 
 Each template includes `pyproject.toml`, tests, `.gitignore`, and a git repo.
 
-### `mcptools inspect <server>` — Explore
+### `mcptools inspect <server>` - Explore
 
 Connect to any MCP server and display its capabilities.
 
@@ -120,7 +120,7 @@ mcptools inspect "python server.py"     # Explicit command
 mcptools inspect server.py --json       # Raw JSON output (pipe to jq)
 ```
 
-### `mcptools test <server>` — Test
+### `mcptools test <server>` - Test
 
 Interactively test tools or script them for CI.
 
@@ -131,7 +131,7 @@ mcptools test server.py --tool get_greeting --params '{"name": "World"}'  # Scri
 
 Interactive mode shows all tools, lets you pick one, prompts for parameters with type validation, and displays results.
 
-### `mcptools validate <server>` — Lint
+### `mcptools validate <server>` - Lint
 
 Validate against MCP best practices. 8 checks across naming, descriptions, schemas, security, and more.
 
@@ -153,7 +153,7 @@ mcptools validate server.py --min-score 80   # Fail if below 80 (for CI)
 | Prompt Quality | Descriptions and argument docs |
 | Security Hints | Flags dangerous operations, credential exposure, raw SQL |
 
-### `mcptools dev <server>` — Develop
+### `mcptools dev <server>` - Develop
 
 Watch for file changes, auto-reconnect, and show updated capabilities with a diff.
 
@@ -177,7 +177,7 @@ Watching for changes...
   ✓ Server OK
 ```
 
-### `mcptools docs <server>` — Document
+### `mcptools docs <server>` - Document
 
 Auto-generate Markdown documentation from a live server.
 
@@ -188,7 +188,7 @@ mcptools docs server.py -o TOOLS.md      # Write to file
 
 Generates tool tables, parameter schemas, resource URIs, and prompt arguments. Ready to paste into your README.
 
-### `mcptools proxy <server>` — Debug
+### `mcptools proxy <server>` - Debug
 
 Transparent traffic proxy. Sit between any MCP client and server, log every JSON-RPC message with timestamps and formatting.
 
@@ -220,7 +220,7 @@ mcptools proxy server.py
 
 Use this to debug protocol issues, inspect what your client is actually sending, or understand an unfamiliar server's behavior.
 
-### `mcptools diff <server_a> <server_b>` — Compare
+### `mcptools diff <server_a> <server_b>` - Compare
 
 Compare capabilities of two MCP servers side by side. Essential for versioning and migration.
 
@@ -231,7 +231,7 @@ mcptools diff old_server.py new_server.py
 
 Shows added, removed, and changed tools, resources, and prompts with a summary.
 
-### `mcptools bench <server>` — Benchmark
+### `mcptools bench <server>` - Benchmark
 
 Measure tool response times with statistical analysis.
 
@@ -268,13 +268,13 @@ Gate PRs on MCP server quality:
                                        stderr → logs
 ```
 
-mcptools includes a lightweight JSON-RPC client that speaks the MCP protocol directly over stdio. No MCP SDK required — works with any server in any language.
+mcptools includes a lightweight JSON-RPC client that speaks the MCP protocol directly over stdio. No MCP SDK required - works with any server in any language.
 
 ## Architecture
 
 ```
 mcptools/
-├── cli.py            # Typer CLI — 9 commands
+├── cli.py            # Typer CLI - 9 commands
 ├── client.py         # Lightweight MCP client (JSON-RPC over stdio)
 ├── utils.py          # Shared inspection utilities
 ├── init_cmd.py       # Project scaffolding (3 templates)
@@ -292,10 +292,10 @@ mcptools/
 
 Any MCP server, any language, any framework:
 
-- **Python** — [FastMCP](https://gofastmcp.com), [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
-- **TypeScript** — [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
-- **Go** — [mcp-go](https://github.com/mark3labs/mcp-go)
-- **Rust** — [mcp-rust](https://github.com/Derek-X-Wang/mcp-rust-sdk)
+- **Python** - [FastMCP](https://gofastmcp.com), [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+- **TypeScript** - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+- **Go** - [mcp-go](https://github.com/mark3labs/mcp-go)
+- **Rust** - [mcp-rust](https://github.com/Derek-X-Wang/mcp-rust-sdk)
 
 For developers building MCP servers for **Claude Code**, **Cursor**, **Windsurf**, **Cline**, and more.
 
@@ -310,4 +310,4 @@ PRs welcome. Please open an issue first for larger changes.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](LICENSE) for details.
