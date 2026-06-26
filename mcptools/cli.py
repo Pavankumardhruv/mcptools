@@ -1,4 +1,4 @@
-"""mcptools — The Swiss Army knife for MCP server development."""
+"""mcptools - The Swiss Army knife for MCP server development."""
 
 from typing import Optional
 

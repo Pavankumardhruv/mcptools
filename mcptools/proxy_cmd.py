@@ -1,4 +1,4 @@
-"""MCP traffic proxy — sit between client and server, log all JSON-RPC messages."""
+"""MCP traffic proxy - sit between client and server, log all JSON-RPC messages."""
 
 import asyncio
 import json

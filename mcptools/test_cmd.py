@@ -108,7 +108,7 @@ def _prompt_params(tool):
 
         label = f"  {name} [dim]({ptype})[/dim]"
         if desc:
-            label += f" [dim]— {desc}[/dim]"
+            label += f" [dim]- {desc}[/dim]"
         if not is_required:
             label += " [dim][optional][/dim]"
 
